@@ -59,8 +59,8 @@ vector<string> parseData(string line) {
 
 void readData(vector<AnimeTraits>& animeList) {
    // string FN = "data.csv";
-    string FN="smallfile.csv";
-   // string FN ="anime.csv";
+   // string FN="smallfile.csv";
+   string FN ="anime.csv";
     ifstream checkData(FN);
 
     if (!checkData.is_open()) {
