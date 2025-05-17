@@ -4,6 +4,7 @@ using namespace std;
 #include "animeTraits.h"
 #include <vector>
 #include <set>
+#include <utility>
 
 class Node
 {
@@ -30,10 +31,13 @@ public:
 	Node *root;
 	vector<AnimeTraits> characters;
 
-	BDT(vector<AnimeTraits> characters)
-	{
+	BDT(vector<AnimeTraits> characters){
 		this->characters = characters;
 	}
+	
+	~BDT(){
+    destroyTree(root);
+  }
 
 	bool hasTag(AnimeTraits &c, const string &tag)
 	{
@@ -231,21 +235,72 @@ string findCommonColor(vector<AnimeTraits> characters) {
 			}
         	
 		}
-		vector<AnimeTraits>noHairColor;
+		vector<AnimeTraits>noHairColor,yesHairColor;
 		for(AnimeTraits &c:noGroup){
 			if(c.hairColor==""){
 				noHairColor.push_back(c);
 			}
+			else{
+				yesHairColor.push_back(c);
+			}
 		}
+		
+		
 		root->yes = new Node("does your character have "+commonColor +" ? (yes/no)", yesGroup);
-		root->yes->yes=new Node("",commonColorCharYes);
-		root->yes->no=new Node("",commonColorCharNo);
+	    root->yes->yes=getTagNode(commonColorCharYes);
+	
 		
 		
+		commonColor=findCommonColor (commonColorCharNo);
+		
+		
+	   	 commonColorCharYes.clear();
+		 vector<AnimeTraits> temp;
+		 temp=commonColorCharNo;
+		 commonColorCharNo.clear();
+		 for(AnimeTraits &c:temp){
+        	if(c.hairColor==commonColor){
+        		commonColorCharYes.push_back(c);
+			}
+			else{
+				commonColorCharNo.push_back(c);
+			}
+        	
+		}
+		
+		 root->yes->no=new Node("does your character have "+commonColor +" ? (yes/no)",temp);
+		 root->yes->no->yes=getTagNode(commonColorCharYes);
+		 
+		 
+		commonColor=findCommonColor (commonColorCharNo);
+		commonColorCharYes.clear();
+		 temp.clear();
+		 temp=commonColorCharNo;
+		 commonColorCharNo.clear();
+		 for(AnimeTraits &c:temp){
+        	if(c.hairColor==commonColor){
+        		commonColorCharYes.push_back(c);
+			}
+			else{
+				commonColorCharNo.push_back(c);
+			}
+        	
+		}
+		 	
+		 	
+		    root->yes->no->no=new Node("does your character have "+commonColor +" ? (yes/no)",temp);
+		    root->yes->no->no->yes=getTagNode(commonColorCharYes);
+		    root->yes->no->no->no=getTagNode(commonColorCharNo);
 
-		 root->no = new Node("does your character have hair color (yes/no)", noGroup);
-         root->no->yes=new Node("",noGroup);
-         root->no->no=new Node("",noHairColor);
+			
+		root->no = new Node("does your character have hair color (yes/no)", noGroup);
+    	root->no->yes=getTagNode(yesHairColor);
+    	
+    	
+		root->no->no=getTagNode(noHairColor);
+   
+         
+         
 		return root;
 	}
 
@@ -262,6 +317,121 @@ string findCommonColor(vector<AnimeTraits> characters) {
 
 		return new Node("Does your anime contain natural hair? (yes/no)", genderGroup);
 	}
+	
+	
+int findCommonTagSize(vector<AnimeTraits>& characters) {
+	if (characters.empty()) return 0;
+    vector<int> uniqueTagSizes;
+    vector<int> tagCounts;
+
+    for ( AnimeTraits& c : characters) {
+        int tagSize = c.tags.size();
+        bool found = false;
+
+        for (int i = 0; i < uniqueTagSizes.size(); ++i) {
+            if (uniqueTagSizes[i] == tagSize) {
+                tagCounts[i]++;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            uniqueTagSizes.push_back(tagSize);
+            tagCounts.push_back(1);
+        }
+    }
+
+    int maxIndex = 0;
+    for (int i = 1; i < tagCounts.size(); ++i) {
+        if (tagCounts[i] > tagCounts[maxIndex]) {
+            maxIndex = i;
+        }
+    }
+
+    return uniqueTagSizes[maxIndex];
+}
+
+
+	
+	int findMaxTags(vector<AnimeTraits>& characters) {
+    
+   if (characters.empty()) return 0;
+    int maxTags = characters[0].tags.size();
+
+    for (AnimeTraits& c : characters) {
+        if (c.tags.size() > maxTags) {
+            maxTags = c.tags.size();
+            
+        }
+    }
+
+    return maxTags;
+}
+	
+	
+	Node * getTagNode(vector<AnimeTraits>characters){
+		int maxTags=findCommonTagSize(characters);
+
+		Node *node= new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)",characters);
+	    auto[yesGroup,noGroup]=splitByMaxTags(maxTags,characters);
+	    
+	    node->yes= getCharQuestion(yesGroup);
+	    
+	    
+	       maxTags=findCommonTagSize(noGroup);
+	       auto[yesGroup2,noGroup2]=splitByMaxTags(maxTags,noGroup);
+	    node->no= new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)", noGroup);
+	    
+	    
+
+	     node->no->yes=getCharQuestion(yesGroup2);
+	    
+	      maxTags=findCommonTagSize(noGroup2);
+	     auto[yesGroup3,noGroup3]=splitByMaxTags(maxTags,noGroup2);
+	    node->no->no=new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)",noGroup2);
+	  
+	    node->no->no->no=getCharQuestion(noGroup3);
+	    node->no->no->yes=getCharQuestion(yesGroup3);
+	    
+	  
+		return node;
+	}
+	
+	Node *getCharQuestion(vector<AnimeTraits> &characters){
+		
+		return new Node("",characters);
+		
+		
+		
+		
+		
+	}
+	
+	
+	
+	
+
+	
+ pair<vector<AnimeTraits>,vector<AnimeTraits>>	splitByMaxTags(int maxTags,vector<AnimeTraits>&characters){
+		    vector <AnimeTraits> yesGroup,noGroup;                   
+	 
+	         for(AnimeTraits &c:characters){
+	         	if(c.tags.size()==maxTags){
+	         		yesGroup.push_back(c);
+				 }
+				 
+				 else {
+				 	noGroup.push_back(c);
+				 }
+			 }
+			 
+			 return {yesGroup,noGroup};
+	}
+	
+	
+	
+
 
 	void playGame()
 	{
@@ -318,4 +488,16 @@ string findCommonColor(vector<AnimeTraits> characters) {
 			}
 		}
 	}
+	
+	
+	void destroyTree(Node* node){
+    if (node == nullptr)
+        return;
+
+    destroyTree(node->yes);
+    destroyTree(node->no);
+    destroyTree(node->other);
+
+    delete node;
+}
 };
