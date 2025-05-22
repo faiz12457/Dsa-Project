@@ -5,6 +5,9 @@ using namespace std;
 #include <vector>
 #include <set>
 #include <utility>
+#include <algorithm>
+
+using namespace std;
 
 class Node
 {
@@ -25,59 +28,456 @@ public:
 	}
 };
 
-class BDT
-{
-public:
+
+
+class BDT{
+	public:
 	Node *root;
 	vector<AnimeTraits> characters;
 
+    // CONSTRUCTOR
 	BDT(vector<AnimeTraits> characters){
 		this->characters = characters;
 	}
-	
+	// DESTRUCTOR
 	~BDT(){
     destroyTree(root);
   }
+  
+  
+   // DELETE ALL NODES
+  	void destroyTree(Node* node){
+    if (node == nullptr)
+        return;
 
-	bool hasTag(AnimeTraits &c, const string &tag)
+    destroyTree(node->yes);
+    destroyTree(node->no);
+    destroyTree(node->other);
+
+    delete node;
+     }
+     
+     
+	void builtTree()
 	{
-		for (string t : c.tags)
-			if (t == tag)
-				return true;
-		for (string a : c.anime)
-			if (a == tag)
-				return true;
-		for (string m : c.manga)
-			if (m == tag)
-				return true;
-		return false;
-	}
 
-	vector<string> collectAllColors(vector<AnimeTraits> &characters)
-	{
-		vector<string> all;
+		vector<AnimeTraits> yesGroup, noGroup;
 
-		for (AnimeTraits c : characters)
+		for (AnimeTraits &c : characters)
 		{
-			bool found = false;
-			for (string a : all)
+			if (c.anime.size() == 0 and c.manga.size() == 0 and c.tags.size() > 0)
 			{
-				if (a == c.hairColor)
-				{
-					found = true;
-					break;
-				}
+				yesGroup.push_back(c);
 			}
-
-			if (!found)
+			
+			else
 			{
-				all.push_back(c.hairColor);
+				noGroup.push_back(c);
 			}
 		}
-		return all;
+
+		root = new Node("Does your anime only contain tags? (yes/no)", characters);
+	//	root->yes = new Node("is your character is male (yes/no/other)", yesGroup);
+	
+		root->no = new Node("is your character have all three manga and anime and tags (yes/no) ", noGroup);
+
+//		root->yes->yes = getGenderChar(root->yes, "Male");
+//		root->yes->no = getGenderChar(root->yes, "Female");
+//		root->yes->other = getGenderChar(root->yes, "");
+
+		vector<AnimeTraits> existInBothYes, existInBothNo;
+		for (AnimeTraits &c : root->no->characters)
+		{
+			if (c.anime.size() > 0 and c.manga.size() > 0 and c.tags.size()>0)
+			{
+				existInBothYes.push_back(c);
+			}
+			
+			else
+			{
+				existInBothNo.push_back(c);
+			}
+		}
+
+		root->no->yes = new Node("is your character is male (yes/no/other)", existInBothYes);
+		root->no->no = new Node("is your character is male (yes/no/other)", existInBothNo);
+
+		root->no->yes->yes = getGenderChar(root->no->yes, "Male");
+		root->no->yes->no = getGenderChar(root->no->yes, "Female");
+		root->no->yes->other = getGenderChar(root->no->yes, "");
+
+		root->no->no->yes = getGenderChar(root->no->no, "Male");
+		root->no->no->no = getGenderChar(root->no->no, "Female");
+		root->no->no->other = getGenderChar(root->no->no, "");
 	}
 	
-string findCommonColor(vector<AnimeTraits> characters) {
+	// GET GENDER CHAR FUNCTION
+		Node *getGenderChar(Node *node, string gender)
+	{
+		vector<AnimeTraits> genderGroup;
+		for (AnimeTraits c : node->characters)
+		{
+			if (c.gender == gender)
+			{
+				genderGroup.push_back(c);
+			}
+		}
+		
+		string question="Does your anime contain natural hair? (yes/no)";
+		
+           return getHairColor(question,genderGroup);
+	
+	}
+	
+	
+
+	// filter character using hair color function
+
+pair<vector<AnimeTraits>,vector<AnimeTraits>> filterCharUsingColor(vector<AnimeTraits>&characters,string commonColor){
+	   vector<AnimeTraits> yesGroup,noGroup;
+        
+        for(AnimeTraits &c:characters){
+        	if(c.hairColor==commonColor){
+        		yesGroup.push_back(c);
+			}
+			else{
+				noGroup.push_back(c);
+			}
+        	
+		}
+		
+		return {yesGroup,noGroup};
+}
+  
+   // get split colors function based on natural and unNatural
+   
+   pair<vector<AnimeTraits>,vector<AnimeTraits>> splitHairColor(vector<AnimeTraits>&characters){
+   		string hairColors[12] = {
+			"Black Hair",
+			"Grey Hair",
+			"Blonde Hair",
+			"Brown Hair",
+			"Red Hair",
+			"Pink Hair",
+			"White Hair",
+			"Green Hair",
+			"Multicolored Hair",
+			"Orange Hair",
+			"Purple Hair",
+			"Blue Hair"};
+			
+		vector<AnimeTraits> yesGroup, noGroup;
+
+		for (AnimeTraits &c : characters)
+		{
+			if (c.hairColor == hairColors[0] ||
+				c.hairColor == hairColors[1] ||
+				c.hairColor == hairColors[2] ||
+				c.hairColor == hairColors[3] ||
+				c.hairColor == hairColors[4] ||
+				c.hairColor == hairColors[5] ||
+				c.hairColor == hairColors[6] ||
+				c.hairColor == hairColors[7] ||
+				c.hairColor == hairColors[8] ||
+				c.hairColor == hairColors[9] ||
+				c.hairColor == hairColors[10] ||
+				c.hairColor == hairColors[11])
+			{
+				yesGroup.push_back(c);
+			}
+			else
+			{
+				noGroup.push_back(c);
+			}
+		}
+		
+		return {yesGroup,noGroup};
+   }
+  
+  
+  //  GET HAIR COLOR FUNCTION 
+  	Node *getHairColor(string question, vector<AnimeTraits> &characters)
+	{
+		
+		Node *node= new Node(question,characters);
+		
+		auto [naturalColors,nonNaturalColors]=splitHairColor(characters);
+	
+		string commonColor=naturalColors[0].hairColor;
+		
+        commonColor=findCommonColor(naturalColors);
+        
+    
+        
+        auto[commonColorCharYes,commonColorCharNo]= filterCharUsingColor(naturalColors,commonColor);
+        
+
+		node->yes = new Node("Does your character have "+commonColor +" ? (yes/no)",naturalColors);
+	    node->yes->yes=getTagSizeQuestion(commonColorCharYes);
+    
+		
+		commonColor=findCommonColor (commonColorCharNo);
+		auto[commonColorCharYes1,commonColorCharNo1]= filterCharUsingColor(commonColorCharNo,commonColor);
+		
+	    node->yes->no=new Node("Does your character have "+commonColor +" ? (yes/no)",commonColorCharNo1);
+		node->yes->no->yes=getTagSizeQuestion(commonColorCharYes1);
+		 
+		 
+		 
+		commonColor=findCommonColor (commonColorCharNo1);
+		auto[commonColorCharYes2,commonColorCharNo2]= filterCharUsingColor(commonColorCharNo1,commonColor);
+			
+			
+		node->yes->no->no=new Node("Does your character have "+commonColor +" ? (yes/no)",commonColorCharNo1);
+		node->yes->no->no->yes=getTagSizeQuestion(commonColorCharYes2);
+		node->yes->no->no->no=getTagSizeQuestion(commonColorCharNo2);
+
+	    auto[noHairColor,yesHairColor]=filterCharUsingColor(nonNaturalColors,"");	
+	    node->no = new Node("Does your character have hair color (yes/no)",nonNaturalColors);
+        node->no->yes=getTagSizeQuestion(yesHairColor);
+    	
+    	
+	    node->no->no=getTagSizeQuestion(noHairColor);
+   
+		return node;
+	}
+	
+	    // TAG SIZE QUESTION NODE
+		Node * getTagSizeQuestion(vector<AnimeTraits>&characters){
+		int maxTags=findCommonTagSize(characters);
+		Node *node= new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)",characters);
+	    auto[yesGroup,noGroup]=splitByMaxTags(maxTags,characters);
+	    
+	    node->yes= getVowelQuestion(yesGroup);
+	    
+	    
+	    maxTags=findCommonTagSize(noGroup);
+	    auto[yesGroup2,noGroup2]=splitByMaxTags(maxTags,noGroup);
+	    node->no= new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)", noGroup);
+	    
+	      node->no->yes=getVowelQuestion(yesGroup2);
+	    
+	      maxTags=findCommonTagSize(noGroup2);
+	     auto[yesGroup3,noGroup3]=splitByMaxTags(maxTags,noGroup2);
+	    node->no->no=new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)",noGroup2);
+	  
+	    node->no->no->no=getVowelQuestion(noGroup3);
+	    
+	    node->no->no->yes=getVowelQuestion(yesGroup3);
+	    
+		return node;
+	}
+	
+		Node *getVowelQuestion(vector<AnimeTraits> &characters){
+	  int vowelCount=0;
+	vowelCount=findCommonVowelCount(characters);
+	vector<AnimeTraits> yesGroup,noGroup;
+	
+for (auto& c : characters) {
+    if (c.tags.size() > 0 and vowelCount>0) {
+        int count = countVowels(c.tags[0]);
+        if (count == vowelCount) {
+            yesGroup.push_back(c);
+        } else {
+            noGroup.push_back(c);   
+        }
+    }
+}
+	
+ Node *node=new Node("Does your Character first Tag contain "+ to_string(vowelCount) + " vowels? (yes/no)",characters);
+ 
+       //  if(!characters[0].anime.empty()){
+         	 node->yes=getAnimeQuestion(yesGroup);
+         	 node->no=getAnimeQuestion(noGroup);
+//		 }
+//	 else{
+//	    node->yes=buildLengthDecisionTree(yesGroup);
+//	    node->no=buildLengthDecisionTree(noGroup);
+//   }
+		return node;
+	}
+	
+	
+	pair<vector<AnimeTraits>,vector<AnimeTraits>> splitByCommonVowelCount(int commonCount,vector<AnimeTraits>&characters){
+		
+		vector <AnimeTraits>yesGroup,noGroup;
+		for (auto& c : characters) {
+    if (c.anime.size() > 0 and commonCount>0) {
+        int count = countVowels(c.anime[0]);
+        if (count == commonCount) {
+            yesGroup.push_back(c);
+        } else {
+            noGroup.push_back(c);   
+        }
+    }
+}
+		
+		return {yesGroup,noGroup};
+	}
+	
+	
+	
+	Node *getAnimeQuestion(vector<AnimeTraits>&characters){
+		
+		int commonSize=findCommonAnimeSize(characters);
+
+	
+		Node *node=new Node("Does your character contain "+to_string(commonSize)+" anime? (yes/no) ",characters);
+		auto[yesGroup,noGroup]=splitByCommonAnime(commonSize,characters);
+		
+		node->yes=getAnimeVowelQuestion(yesGroup);
+		
+	    commonSize=findCommonAnimeSize(noGroup);
+		node->no=new Node("Does your character contain "+to_string(commonSize)+" anime? (yes/no) ",noGroup);
+		auto[yesGroup1,noGroup1]=splitByCommonAnime(commonSize,noGroup);
+			
+		node->no->yes=getAnimeVowelQuestion(yesGroup1);
+		commonSize=findCommonAnimeSize(noGroup1);
+		node->no->no=new Node("Does your character contain "+to_string(commonSize)+" anime? (yes/no) ",noGroup1);
+		auto[yesGroup2,noGroup2]=splitByCommonAnime(commonSize,noGroup1);
+	    node->no->no->yes=getAnimeVowelQuestion(yesGroup2);
+	    node->no->no->no=getAnimeVowelQuestion(noGroup2);
+		return node;	
+	}
+	
+	Node*getAnimeVowelQuestion(vector<AnimeTraits>&characters){
+		
+		int vowelCount=findCommonVowelCountAnime(characters);
+		auto[yesGroup,noGroup]= splitByCommonVowelCount(vowelCount,characters);
+		Node *node=new Node("Does your first anime contain "+to_string(vowelCount) +" vowels? (yes/no)",characters);
+		
+		node->yes=buildLengthDecisionTree(yesGroup);
+		node->no=buildLengthDecisionTree(noGroup);
+		
+		return node;
+	}
+	
+	
+	
+	// BUILT TAG LENGTH TREE FUNCTION
+	Node* buildLengthDecisionTree(vector<AnimeTraits> characters) {
+    if (characters.empty()) return nullptr;
+
+    auto [maxLength, minLength] = findMaxMinTagLengthCharacters(characters);
+
+    // Split into groups
+    vector<AnimeTraits> yesGroup, noGroup;
+
+    for (auto& c : characters) {
+        if (!c.tags.empty() && c.tags[0].length() == maxLength) {
+            yesGroup.push_back(c);
+        } else {
+            noGroup.push_back(c);
+        }
+    }
+
+    // Create current node
+    string question = "Does your character's first tag have length " + to_string(maxLength) + "? (yes/no)";
+    Node* node = new Node(question, characters);
+
+    
+    if (yesGroup.size() == characters.size()) {
+    	if(yesGroup.size()<=10){
+    		node->yes =tagQuestion(yesGroup);
+            node->no = nullptr;
+		}
+		else{
+		node->yes = new Node("Group with tag length " + to_string(maxLength), yesGroup);
+    
+        node->no = nullptr;
+    }
+        return node;
+    }
+    
+    
+      
+      if(yesGroup.size()<=10){
+      	node->yes=tagQuestion(yesGroup);
+      	node->no = buildLengthDecisionTree(noGroup);
+	  }
+	  else{
+	node->yes = new Node("Group with tag length " + to_string(maxLength), yesGroup);
+    node->no = buildLengthDecisionTree(noGroup);
+	 }
+
+
+    return node;
+}
+
+
+
+Node* tagQuestion(vector<AnimeTraits> characters) {
+    if (characters.empty()) return nullptr;
+
+    // Base condition: only one character left
+    if (characters.size() == 1) {
+        return new Node("Answer: " + characters[0].name, characters);
+    }
+
+    // Start building the decision tree
+    Node* root = nullptr;
+    Node* current = nullptr;
+
+    for (int i = 0; i < characters.size(); ++i) {
+        string tag = characters[i].tags[0];
+        Node* questionNode = new Node("Does your character have tag \"" + tag + "\"? (yes/no)", characters);
+        questionNode->yes = new Node("Answer: " + characters[i].name, {characters[i]});
+
+        if (root == nullptr) {
+            root = questionNode;
+            current = questionNode;
+        } else {
+            current->no = questionNode;
+            current = questionNode;
+        }
+    }
+
+    // Final fallback node if none matched
+    current->no = new Node("Character not found.", {});
+    return root;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+pair<int, int> findMaxMinTagLengthCharacters(vector<AnimeTraits>& characters) {
+    if (characters.empty()) {
+        return {-1, -1};
+    }
+
+    int maxLength = -1;
+    int minLength = INT_MAX;
+
+    for (const auto& c : characters) {
+        if (!c.tags.empty()) {
+            int len = c.tags[0].length();
+
+            if (len > maxLength) {
+                maxLength = len;
+            }
+
+            if (len < minLength) {
+                minLength = len;
+            }
+        }
+    }
+
+    return {maxLength, minLength};
+}
+
+	
+	
+	// FIND COMMON COLOR FUNCTION
+	string findCommonColor(vector<AnimeTraits> characters) {
     vector<string> uniqueColors;
     vector<int> colorCounts;
 
@@ -110,471 +510,41 @@ string findCommonColor(vector<AnimeTraits> characters) {
     return  uniqueColors[maxIndex];
 }
 
-	void builtTree()
-	{
-
-		vector<AnimeTraits> yesGroup, noGroup;
-
-		for (AnimeTraits &c : characters)
-		{
-			if (c.anime.size() == 0 and c.manga.size() == 0 and c.tags.size() > 0)
-			{
-				yesGroup.push_back(c);
-			}
-
-			//  else if(c.anime.size()>0 or c.manga.size()>0 or c.tags.size()>0){
-			//  	noGroup.push_back(c);
-			//  }
-			else
-			{
-				noGroup.push_back(c);
-			}
-		}
-
-		root = new Node("Does your anime only contain tags? (yes/no)", characters);
-		root->yes = new Node("is your character is male (yes/no/other)", yesGroup);
-	
-		root->no = new Node("is your character have all manga and anime and tags (yes/no) ", noGroup);
-
-		root->yes->yes = getGenderChar(root->yes, "Male");
-		root->yes->no = getGenderChar(root->yes, "Female");
-		root->yes->other = getGenderChar(root->yes, "");
-
-		vector<AnimeTraits> existInBothYes, existInBothNo;
-		for (AnimeTraits &c : root->no->characters)
-		{
-			if (c.anime.size() > 0 and c.manga.size() > 0 and c.tags.size()>0)
-			{
-				existInBothYes.push_back(c);
-			}
-			//              else if(c.anime.size()>1 or c.manga.size()>1){
-			//              	existInBothNo.push_back(c);
-			//			  }
-
-			else
-			{
-				existInBothNo.push_back(c);
-			}
-		}
-
-		root->no->yes = new Node("is your character is male (yes/no/other)", existInBothYes);
-		root->no->no = new Node("is your character is male (yes/no/other)", existInBothNo);
-
-		root->no->yes->yes = getGenderChar(root->no->yes, "Male");
-		root->no->yes->no = getGenderChar(root->no->yes, "Female");
-		root->no->yes->other = getGenderChar(root->no->yes, "");
-
-		root->no->no->yes = getGenderChar(root->no->no, "Male");
-		root->no->no->no = getGenderChar(root->no->no, "Female");
-		root->no->no->other = getGenderChar(root->no->no, "");
-
-		root->yes->yes = getHairColor(root->yes->yes, root->yes->yes->characters);
-		root->yes->no = getHairColor(root->yes->no, root->yes->no->characters);
-		root->yes->other = getHairColor(root->yes->other, root->yes->other->characters);
-
-		root->no->yes->yes = getHairColor(root->no->yes->yes, root->no->yes->yes->characters);
-		root->no->yes->no = getHairColor(root->no->yes->no, root->no->yes->no->characters);
-		root->no->yes->other = getHairColor(root->no->yes->other, root->no->yes->other->characters);
-
-		root->no->no->yes = getHairColor(root->no->no->yes, root->no->no->yes->characters);
-		root->no->no->no = getHairColor(root->no->no->no, root->no->no->no->characters);
-		root->no->no->other = getHairColor(root->no->no->other, root->no->no->other->characters);
-	}
-	
-	Node *getHairColor1(Node *root, vector<AnimeTraits> &characters)
-	{
-		string hairColors[12] = {
-			"Black Hair",
-			"Grey Hair",
-			"Blonde Hair",
-			"Brown Hair",
-			"Red Hair",
-			"Pink Hair",
-			"White Hair",
-			"Green Hair",
-			"Multicolored Hair",
-			"Orange Hair",
-			"Purple Hair",
-			"Blue Hair"};
-		int size = sizeof(hairColors) / sizeof(hairColors[0]);
-		vector<AnimeTraits> yesGroup, noGroup;
-
-		for (AnimeTraits &c : characters)
-		{
-			if (c.hairColor == hairColors[0] ||
-				c.hairColor == hairColors[1] ||
-				c.hairColor == hairColors[2] ||
-				c.hairColor == hairColors[3] ||
-				c.hairColor == hairColors[4] ||
-				c.hairColor == hairColors[5] ||
-				c.hairColor == hairColors[6] ||
-				c.hairColor == hairColors[7] ||
-				c.hairColor == hairColors[8] ||
-				c.hairColor == hairColors[9] ||
-				c.hairColor == hairColors[10] ||
-				c.hairColor == hairColors[11])
-			{
-				yesGroup.push_back(c);
-			}
-			else
-			{
-				noGroup.push_back(c);
-			}
-		}
-		 string commonColor=yesGroup[0].hairColor;
-		
-        commonColor=findCommonColor (yesGroup);
-        
-        vector<AnimeTraits> commonColorCharYes,commonColorCharNo;
-        
-        for(AnimeTraits &c:yesGroup){
-        	if(c.hairColor==commonColor){
-        		commonColorCharYes.push_back(c);
-			}
-			else{
-				commonColorCharNo.push_back(c);
-			}
-        	
-		}
-		vector<AnimeTraits>noHairColor,yesHairColor;
-		for(AnimeTraits &c:noGroup){
-			if(c.hairColor==""){
-				noHairColor.push_back(c);
-			}
-			else{
-				yesHairColor.push_back(c);
-			}
-		}
-		
-		
-		root->yes = new Node("Does your character have "+commonColor +" ? (yes/no)", yesGroup);
-	    root->yes->yes=checkWhatExist(commonColorCharYes);
-	
-		
-		
-		commonColor=findCommonColor (commonColorCharNo);
-		
-		
-	   	 commonColorCharYes.clear();
-		 vector<AnimeTraits> temp;
-		 temp=commonColorCharNo;
-		 commonColorCharNo.clear();
-		 for(AnimeTraits &c:temp){
-        	if(c.hairColor==commonColor){
-        		commonColorCharYes.push_back(c);
-			}
-			else{
-				commonColorCharNo.push_back(c);
-			}
-        	
-		}
-		
-		 root->yes->no=new Node("does your character have "+commonColor +" ? (yes/no)",temp);
-		 root->yes->no->yes=checkWhatExist(commonColorCharYes);
-		 
-		 
-		commonColor=findCommonColor (commonColorCharNo);
-		commonColorCharYes.clear();
-		 temp.clear();
-		 temp=commonColorCharNo;
-		 commonColorCharNo.clear();
-		 for(AnimeTraits &c:temp){
-        	if(c.hairColor==commonColor){
-        		commonColorCharYes.push_back(c);
-			}
-			else{
-				commonColorCharNo.push_back(c);
-			}
-        	
-		}
-		 	
-		 	
-		    root->yes->no->no=new Node("does your character have "+commonColor +" ? (yes/no)",temp);
-		    root->yes->no->no->yes=checkWhatExist(commonColorCharYes);
-		    root->yes->no->no->no=checkWhatExist(commonColorCharNo);
-
-			
-		root->no = new Node("Does your character have hair color (yes/no)", noGroup);
-    	root->no->yes=checkWhatExist(yesHairColor);
-    	
-    	
-		root->no->no=checkWhatExist(noHairColor);
-   
-         
-         
-		return root;
-	}
-
-	
-	void displayVector(const vector<string>& vec, const string& label) {
-    cout << label << ": ";
-    if (vec.empty()) {
-        cout << "None";
-    } else {
-        for (const string& item : vec) {
-            cout << item << ", ";
-        }
-    }
-    cout << endl;
-}
-
-void displayAllCharacters( vector<AnimeTraits>& characters) {
-    for (const auto& c : characters) {
-        cout << "----------------------------------" << endl;
-        cout << "ID: " << c.id << endl;
-        cout << "Name: " << c.name << endl;
-        cout << "Hair Color: " << c.hairColor << endl;
-        cout << "Gender: " << c.gender << endl;
-        displayVector(c.tags, "Tags");
-        displayVector(c.anime, "Anime");
-        displayVector(c.manga, "Manga");
-        cout << "----------------------------------" << endl << endl;
-    }
-}
-	
-	
-	Node *checkWhatExist(vector<AnimeTraits> &characters){
-		cout<<characters.size()<<endl;
-		displayAllCharacters(characters);
-		Node *node=new Node("",characters);
-		
-		
-		
-		return node;
-	}
 	
 	
 	
 	
-
-	Node *getHairColor(Node *root, vector<AnimeTraits> &characters)
-	{
-		string hairColors[12] = {
-			"Black Hair",
-			"Grey Hair",
-			"Blonde Hair",
-			"Brown Hair",
-			"Red Hair",
-			"Pink Hair",
-			"White Hair",
-			"Green Hair",
-			"Multicolored Hair",
-			"Orange Hair",
-			"Purple Hair",
-			"Blue Hair"};
-		int size = sizeof(hairColors) / sizeof(hairColors[0]);
-		vector<AnimeTraits> yesGroup, noGroup;
-
-		for (AnimeTraits &c : characters)
-		{
-			if (c.hairColor == hairColors[0] ||
-				c.hairColor == hairColors[1] ||
-				c.hairColor == hairColors[2] ||
-				c.hairColor == hairColors[3] ||
-				c.hairColor == hairColors[4] ||
-				c.hairColor == hairColors[5] ||
-				c.hairColor == hairColors[6] ||
-				c.hairColor == hairColors[7] ||
-				c.hairColor == hairColors[8] ||
-				c.hairColor == hairColors[9] ||
-				c.hairColor == hairColors[10] ||
-				c.hairColor == hairColors[11])
-			{
-				yesGroup.push_back(c);
-			}
-			else
-			{
-				noGroup.push_back(c);
-			}
-		}
-		 string commonColor=yesGroup[0].hairColor;
-		
-        commonColor=findCommonColor (yesGroup);
-        
-        vector<AnimeTraits> commonColorCharYes,commonColorCharNo;
-        
-        for(AnimeTraits &c:yesGroup){
-        	if(c.hairColor==commonColor){
-        		commonColorCharYes.push_back(c);
-			}
-			else{
-				commonColorCharNo.push_back(c);
-			}
-        	
-		}
-		vector<AnimeTraits>noHairColor,yesHairColor;
-		for(AnimeTraits &c:noGroup){
-			if(c.hairColor==""){
-				noHairColor.push_back(c);
-			}
-			else{
-				yesHairColor.push_back(c);
-			}
-		}
-		
-		
-		root->yes = new Node("does your character have "+commonColor +" ? (yes/no)", yesGroup);
-	    root->yes->yes=getTagNode(commonColorCharYes);
-	
-		
-		
-		commonColor=findCommonColor (commonColorCharNo);
-		
-		
-	   	 commonColorCharYes.clear();
-		 vector<AnimeTraits> temp;
-		 temp=commonColorCharNo;
-		 commonColorCharNo.clear();
-		 for(AnimeTraits &c:temp){
-        	if(c.hairColor==commonColor){
-        		commonColorCharYes.push_back(c);
-			}
-			else{
-				commonColorCharNo.push_back(c);
-			}
-        	
-		}
-		
-		 root->yes->no=new Node("does your character have "+commonColor +" ? (yes/no)",temp);
-		 root->yes->no->yes=getTagNode(commonColorCharYes);
-		 
-		 
-		commonColor=findCommonColor (commonColorCharNo);
-		commonColorCharYes.clear();
-		 temp.clear();
-		 temp=commonColorCharNo;
-		 commonColorCharNo.clear();
-		 for(AnimeTraits &c:temp){
-        	if(c.hairColor==commonColor){
-        		commonColorCharYes.push_back(c);
-			}
-			else{
-				commonColorCharNo.push_back(c);
-			}
-        	
-		}
-		 	
-		 	
-		    root->yes->no->no=new Node("does your character have "+commonColor +" ? (yes/no)",temp);
-		    root->yes->no->no->yes=getTagNode(commonColorCharYes);
-		    root->yes->no->no->no=getTagNode(commonColorCharNo);
-
-			
-		root->no = new Node("Does your character have hair color (yes/no)", noGroup);
-    	root->no->yes=getTagNode(yesHairColor);
-    	
-    	
-		root->no->no=getTagNode(noHairColor);
-   
-         
-         
-		return root;
-	}
-
-	Node *getGenderChar(Node *node, string gender)
-	{
-		vector<AnimeTraits> genderGroup;
-		for (AnimeTraits c : node->characters)
-		{
-			if (c.gender == gender)
-			{
-				genderGroup.push_back(c);
-			}
-		}
-
-		return new Node("Does your anime contain natural hair? (yes/no)", genderGroup);
-	}
 	
 	
-int findCommonTagSize(vector<AnimeTraits>& characters) {
-	if (characters.empty()) return 0;
-    vector<int> uniqueTagSizes;
-    vector<int> tagCounts;
-
-    for ( AnimeTraits& c : characters) {
-        int tagSize = c.tags.size();
-        bool found = false;
-
-        for (int i = 0; i < uniqueTagSizes.size(); ++i) {
-            if (uniqueTagSizes[i] == tagSize) {
-                tagCounts[i]++;
-                found = true;
-                break;
-            }
-        }
-
-        if (!found) {
-            uniqueTagSizes.push_back(tagSize);
-            tagCounts.push_back(1);
-        }
-    }
-
-    int maxIndex = 0;
-    for (int i = 1; i < tagCounts.size(); ++i) {
-        if (tagCounts[i] > tagCounts[maxIndex]) {
-            maxIndex = i;
-        }
-    }
-
-    return uniqueTagSizes[maxIndex];
-}
-
-
-	
-	int findMaxTags(vector<AnimeTraits>& characters) {
-    
-   if (characters.empty()) return 0;
-    int maxTags = characters[0].tags.size();
-
-    for (AnimeTraits& c : characters) {
-        if (c.tags.size() > maxTags) {
-            maxTags = c.tags.size();
-        }
-    }
-
-    return maxTags;
-}
-
-
-
-
-
-
-	
-	Node * getTagNode(vector<AnimeTraits>&characters){
-		int maxTags=findCommonTagSize(characters);
-		Node *node= new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)",characters);
-	    auto[yesGroup,noGroup]=splitByMaxTags(maxTags,characters);
-	    
-	    node->yes= getCharQuestion(yesGroup);
-	    
-	    
-	       maxTags=findCommonTagSize(noGroup);
-	       auto[yesGroup2,noGroup2]=splitByMaxTags(maxTags,noGroup);
-	      node->no= new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)", noGroup);
-	    
-	    
-
-	      node->no->yes=getCharQuestion(yesGroup2);
-	    
-	      maxTags=findCommonTagSize(noGroup2);
-	     auto[yesGroup3,noGroup3]=splitByMaxTags(maxTags,noGroup2);
-	    node->no->no=new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)",noGroup2);
-	  
-	    node->no->no->no=getCharQuestion(noGroup3);
-	    
-	    node->no->no->yes=getCharQuestion(yesGroup3);
-	    
-	  
-		return node;
-	}
-	
-
 	
 	
-	int countVowels( string& str) {
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	   // COUNT VOWEL QUESTION
+		int countVowels( string& str) {
 		if (str.empty()) return 0;
-    int count = 0;
+   		int count = 0;
     for (char ch : str) {
         ch = tolower(ch);
         if (ch == 'a' || ch == 'e' || ch == 'i' || ch == 'o' || ch == 'u') {
@@ -584,6 +554,7 @@ int findCommonTagSize(vector<AnimeTraits>& characters) {
     return count;
 }
 
+  // FIND COMMON VOWEL COUNT FUNCTION
 int findCommonVowelCount(vector<AnimeTraits>& characters) {
     if (characters.empty()) return 0;
 
@@ -621,99 +592,50 @@ int findCommonVowelCount(vector<AnimeTraits>& characters) {
 
     return uniqueVowelCounts[maxIndex];
 }
-	
-	Node *getCharQuestion(vector<AnimeTraits> &characters){
-		 	int vowelCount=0;
-	vowelCount=findCommonVowelCount(characters);
-	vector<AnimeTraits> yesGroup,noGroup;
-	
-for (auto& c : characters) {
-    if (c.tags.size() > 0 and vowelCount>0) {
-        int count = countVowels(c.tags[0]);
-        if (count == vowelCount) {
-            yesGroup.push_back(c);
-        } else {
-            noGroup.push_back(c);   
-        }
-    }
-}
-	
- Node *node=new Node("Does your Character first Tag contain "+ to_string(vowelCount) + " vowels? (yes/no)",characters);
- 
- 	     node->yes=buildLengthDecisionTree(yesGroup);
- 	     node->no=buildLengthDecisionTree(noGroup);
- 	
-		
-		return node;
-	}
-	
-	Node* buildLengthDecisionTree(vector<AnimeTraits> characters) {
-    if (characters.empty()) return nullptr;
 
-    auto [maxLength, minLength] = findMaxMinTagLengthCharacters(characters);
+int findCommonVowelCountAnime(vector<AnimeTraits>& characters) {
+    if (characters.empty()) return 0;
 
-    if (maxLength == -1) return nullptr; // No valid tags
+    vector<int> uniqueVowelCounts;
+    vector<int> vowelFrequencies;
 
-    // Split into groups
-    vector<AnimeTraits> yesGroup, noGroup;
+    for (AnimeTraits& c : characters) {
+    	   if (c.tags.size()>0){
+		   
+        int vowelCount = countVowels(c.anime[0]);
+        bool found = false;
 
-    for (const auto& c : characters) {
-        if (!c.tags.empty() && c.tags[0].length() == maxLength) {
-            yesGroup.push_back(c);
-        } else {
-            noGroup.push_back(c);
-        }
-    }
-
-    // Create current node
-    string question = "Does your character's first tag have length " + to_string(maxLength) + "? (yes/no)";
-    Node* node = new Node(question, characters);
-
-    // Terminal condition
-    if (yesGroup.size() == characters.size()) {
-        node->yes = new Node("This is the character group with tag length " + to_string(maxLength), yesGroup);
-        node->no = nullptr;
-        return node;
-    }
-
-    node->yes = new Node("Group with tag length " + to_string(maxLength), yesGroup);
-    node->no = buildLengthDecisionTree(noGroup); // Recursive call
-
-    return node;
-}
-
-	
-	
-pair<int, int> findMaxMinTagLengthCharacters(const vector<AnimeTraits>& characters) {
-    if (characters.empty()) {
-        return {-1, -1};
-    }
-
-    int maxLength = -1;
-    int minLength = INT_MAX;
-
-    for (const auto& c : characters) {
-        if (!c.tags.empty()) {
-            int len = c.tags[0].length();
-
-            if (len > maxLength) {
-                maxLength = len;
-            }
-
-            if (len < minLength) {
-                minLength = len;
+        for (int i = 0; i < uniqueVowelCounts.size(); i++) {
+            if (uniqueVowelCounts[i] == vowelCount) {
+                vowelFrequencies[i]++;
+                found = true;
+                break;
             }
         }
+
+        if (!found) {
+            uniqueVowelCounts.push_back(vowelCount);
+            vowelFrequencies.push_back(1);
+        }
+    }
+    }
+   if (vowelFrequencies.empty()) return 0; 
+    int maxIndex = 0;
+    for (int i = 1; i < vowelFrequencies.size(); ++i) {
+        if (vowelFrequencies[i] > vowelFrequencies[maxIndex]) {
+            maxIndex = i;
+        }
     }
 
-    return {maxLength, minLength};
+
+    return uniqueVowelCounts[maxIndex];
 }
-
-
 	
 
 	
- pair<vector<AnimeTraits>,vector<AnimeTraits>>	splitByMaxTags(int maxTags,vector<AnimeTraits>&characters){
+
+	// SPLIT CHARACTERS BY MAX TAGS FUNCTION
+	 pair<vector<AnimeTraits>,vector<AnimeTraits>>	splitByMaxTags(int maxTags,vector<AnimeTraits>&characters){
 		    vector <AnimeTraits> yesGroup,noGroup;                   
 	 
 	         for(AnimeTraits &c:characters){
@@ -729,8 +651,90 @@ pair<int, int> findMaxMinTagLengthCharacters(const vector<AnimeTraits>& characte
 			 return {yesGroup,noGroup};
 	}
 	
-	
-	
+		// FIND COMMON TAG SIZE
+int findCommonTagSize(vector<AnimeTraits>& characters) {
+	if (characters.empty()) return 0;
+    vector<int> uniqueTagSizes;
+    vector<int> tagCounts;
+
+    for ( AnimeTraits& c : characters) {
+        int tagSize = c.tags.size();
+        bool found = false;
+
+        for (int i = 0; i < uniqueTagSizes.size(); ++i) {
+            if (uniqueTagSizes[i] == tagSize) {
+                tagCounts[i]++;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            uniqueTagSizes.push_back(tagSize);
+            tagCounts.push_back(1);
+        }
+    }
+
+    int maxIndex = 0;
+    for (int i = 1; i < tagCounts.size(); ++i) {
+        if (tagCounts[i] > tagCounts[maxIndex]) {
+            maxIndex = i;
+        }
+    }
+
+    return uniqueTagSizes[maxIndex];
+}
+
+	 pair<vector<AnimeTraits>,vector<AnimeTraits>>	splitByCommonAnime(int commonAnime,vector<AnimeTraits>&characters){
+		    vector <AnimeTraits> yesGroup,noGroup;                   
+	 
+	         for(AnimeTraits &c:characters){
+	         	if(c.anime.size()==commonAnime){
+	         		yesGroup.push_back(c);
+				 }
+				 
+				 else {
+				 	noGroup.push_back(c);
+				 }
+			 }
+			 
+			 return {yesGroup,noGroup};
+	}
+
+// COMMON ANIME Size 
+int findCommonAnimeSize(vector<AnimeTraits>& characters) {
+	if (characters.empty()) return 0;
+    vector<int> uniqueAnimeSizes;
+    vector<int> animeCounts;
+
+    for ( AnimeTraits& c : characters) {
+        int animeSize = c.anime.size();
+        bool found = false;
+
+        for (int i = 0; i < uniqueAnimeSizes.size(); ++i) {
+            if (uniqueAnimeSizes[i] == animeSize) {
+                animeCounts[i]++;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            uniqueAnimeSizes.push_back(animeSize);
+            animeCounts.push_back(1);
+        }
+    }
+
+    int maxIndex = 0;
+    for (int i = 1; i < animeCounts.size(); ++i) {
+        if (animeCounts[i] > animeCounts[maxIndex]) {
+            maxIndex = i;
+        }
+    }
+
+    return uniqueAnimeSizes[maxIndex];
+}
+
 
 
 	void playGame()
@@ -789,15 +793,13 @@ pair<int, int> findMaxMinTagLengthCharacters(const vector<AnimeTraits>& characte
 		}
 	}
 	
+
+
 	
-	void destroyTree(Node* node){
-    if (node == nullptr)
-        return;
 
-    destroyTree(node->yes);
-    destroyTree(node->no);
-    destroyTree(node->other);
-
-    delete node;
-}
+  
+  
+  
+  
+		
 };
