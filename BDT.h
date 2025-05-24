@@ -1,38 +1,22 @@
 #pragma once
 #include <iostream>
-using namespace std;
 #include "animeTraits.h"
+#include "node.h"
 #include <vector>
 #include <set>
 #include <utility>
 #include <algorithm>
-
+#include "tagFunctions.h"
 using namespace std;
 
-class Node
+
+
+
+class BDT
 {
-public:
-	Node *yes;
-	Node *no;
-	Node *other;
-	string question;
-	vector<AnimeTraits> characters;
-
-	Node(string question, vector<AnimeTraits> characters)
-	{
-		this->question = question;
-		yes = nullptr;
-		no = nullptr;
-		other = nullptr;
-		this->characters = characters;
-	}
-};
-
-
-
-class BDT{
 	public:
 	Node *root;
+	TagQuestion q;
 	vector<AnimeTraits> characters;
 
     // CONSTRUCTOR
@@ -77,13 +61,13 @@ class BDT{
 		}
 
 		root = new Node("Does your anime only contain tags? (yes/no)", characters);
-	//	root->yes = new Node("is your character is male (yes/no/other)", yesGroup);
+		root->yes = new Node("is your character is male (yes/no/other)", yesGroup);
 	
 		root->no = new Node("is your character have all three manga and anime and tags (yes/no) ", noGroup);
 
-//		root->yes->yes = getGenderChar(root->yes, "Male");
-//		root->yes->no = getGenderChar(root->yes, "Female");
-//		root->yes->other = getGenderChar(root->yes, "");
+		root->yes->yes = q.getGenderCharTag(root->yes, "Male");
+		root->yes->no = q.getGenderCharTag(root->yes, "Female");
+		root->yes->other = q.getGenderCharTag(root->yes, "");
 
 		vector<AnimeTraits> existInBothYes, existInBothNo;
 		for (AnimeTraits &c : root->no->characters)
@@ -268,34 +252,54 @@ pair<vector<AnimeTraits>,vector<AnimeTraits>> filterCharUsingColor(vector<AnimeT
 		return node;
 	}
 	
-		Node *getVowelQuestion(vector<AnimeTraits> &characters){
-	  int vowelCount=0;
-	vowelCount=findCommonVowelCount(characters);
-	vector<AnimeTraits> yesGroup,noGroup;
-	
-for (auto& c : characters) {
-    if (c.tags.size() > 0 and vowelCount>0) {
-        int count = countVowels(c.tags[0]);
-        if (count == vowelCount) {
-            yesGroup.push_back(c);
-        } else {
-            noGroup.push_back(c);   
-        }
-    }
-}
-	
- Node *node=new Node("Does your Character first Tag contain "+ to_string(vowelCount) + " vowels? (yes/no)",characters);
- 
-       //  if(!characters[0].anime.empty()){
-         	 node->yes=getAnimeQuestion(yesGroup);
-         	 node->no=getAnimeQuestion(noGroup);
-//		 }
-//	 else{
-//	    node->yes=buildLengthDecisionTree(yesGroup);
-//	    node->no=buildLengthDecisionTree(noGroup);
-//   }
-		return node;
+	pair<vector<AnimeTraits>,vector<AnimeTraits>> splitBasedOnRange(int range,vector<AnimeTraits>&characters){
+		vector<AnimeTraits> yesGroup,noGroup;
+		
+		for(auto c:characters){
+			string allTags="";
+			for(auto tag:c.tags){
+				allTags+=tag;
+			}
+			
+			int count=0;
+			count=countVowels(allTags);
+			
+			if(count<=range){
+				yesGroup.push_back(c);
+			}
+			else{
+				noGroup.push_back(c);
+			}
+		}
+		
+		return {yesGroup,noGroup};
+		
 	}
+	
+
+Node* getVowelQuestion(vector<AnimeTraits>& characters, int depth=3) {
+    if (depth == 0 || characters.size() <= 1) {
+       return getAnimeQuestion(characters);        
+    }
+
+    auto [maxVowel, minVowel] = findMaxMinTagVowels(characters);
+    int mid = minVowel + (maxVowel - minVowel) / 2;
+    string question = "Do your character's tags contain fewer than or equal to " + to_string(mid) + " vowels? (yes/no)";
+    
+    Node* node = new Node(question, characters);
+    
+    auto [yesGroup, noGroup] = splitBasedOnRange(mid, characters);
+    
+    node->yes = getVowelQuestion(yesGroup, depth - 1);
+    node->no = getVowelQuestion(noGroup, depth - 1);
+
+    return node;
+}
+
+
+
+
+
 	
 	
 	pair<vector<AnimeTraits>,vector<AnimeTraits>> splitByCommonVowelCount(int commonCount,vector<AnimeTraits>&characters){
@@ -340,15 +344,20 @@ for (auto& c : characters) {
 		return node;	
 	}
 	
-	Node*getAnimeVowelQuestion(vector<AnimeTraits>&characters){
+	     Node*getAnimeVowelQuestion(vector<AnimeTraits>&characters){
 		
 		int vowelCount=findCommonVowelCountAnime(characters);
 		auto[yesGroup,noGroup]= splitByCommonVowelCount(vowelCount,characters);
 		Node *node=new Node("Does your first anime contain "+to_string(vowelCount) +" vowels? (yes/no)",characters);
-		
+		if(characters.size()<=10){
+			node->yes=tagQuestion(yesGroup);
+			node->no=tagQuestion(noGroup);
+		}
+		else{
+			
 		node->yes=buildLengthDecisionTree(yesGroup);
-		node->no=buildLengthDecisionTree(noGroup);
-		
+	 	node->no=buildLengthDecisionTree(noGroup);
+	}
 		return node;
 	}
 	
@@ -359,7 +368,7 @@ for (auto& c : characters) {
     if (characters.empty()) return nullptr;
 
     auto [maxLength, minLength] = findMaxMinTagLengthCharacters(characters);
-
+       
     // Split into groups
     vector<AnimeTraits> yesGroup, noGroup;
 
@@ -383,7 +392,6 @@ for (auto& c : characters) {
 		}
 		else{
 		node->yes = new Node("Group with tag length " + to_string(maxLength), yesGroup);
-    
         node->no = nullptr;
     }
         return node;
@@ -407,7 +415,7 @@ for (auto& c : characters) {
 
 
 Node* tagQuestion(vector<AnimeTraits> characters) {
-    if (characters.empty()) return nullptr;
+    if (characters.empty()) return new Node("",{});
 
     // Base condition: only one character left
     if (characters.size() == 1) {
@@ -437,9 +445,37 @@ Node* tagQuestion(vector<AnimeTraits> characters) {
     return root;
 }
 
+pair<int, int> findMaxMinTagVowels(vector<AnimeTraits>& characters) {
+    if (characters.empty()) {
+        return {-1, -1};
+    }
+    int maxVowels = -1;
+    int minVowels = INT_MAX;
 
+    for (const auto& c : characters) {
+        if (!c.tags.empty()) {
+    
+            
+            string allTags="";
+            
+            for(auto tag: c.tags){
+            	allTags+=tag;
+			}
+			int count =0;
+			count=countVowels(allTags);
 
+            if (count > maxVowels) {
+                maxVowels = count;
+            }
 
+            if (count <minVowels) {
+                minVowels = count;
+            }
+        }
+    }
+
+    return {maxVowels, minVowels};
+}
 
 
 
@@ -474,8 +510,6 @@ pair<int, int> findMaxMinTagLengthCharacters(vector<AnimeTraits>& characters) {
     return {maxLength, minLength};
 }
 
-	
-	
 	// FIND COMMON COLOR FUNCTION
 	string findCommonColor(vector<AnimeTraits> characters) {
     vector<string> uniqueColors;
@@ -509,38 +543,6 @@ pair<int, int> findMaxMinTagLengthCharacters(vector<AnimeTraits>& characters) {
 
     return  uniqueColors[maxIndex];
 }
-
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	   // COUNT VOWEL QUESTION
 		int countVowels( string& str) {
 		if (str.empty()) return 0;
@@ -630,10 +632,6 @@ int findCommonVowelCountAnime(vector<AnimeTraits>& characters) {
 
     return uniqueVowelCounts[maxIndex];
 }
-	
-
-	
-
 	// SPLIT CHARACTERS BY MAX TAGS FUNCTION
 	 pair<vector<AnimeTraits>,vector<AnimeTraits>>	splitByMaxTags(int maxTags,vector<AnimeTraits>&characters){
 		    vector <AnimeTraits> yesGroup,noGroup;                   
@@ -751,20 +749,42 @@ int findCommonAnimeSize(vector<AnimeTraits>& characters) {
 
 				if (answer == "yes")
 				{
-					cout << "Characters matched: " << current->yes->characters.size() << endl;
+					 if(current->yes->characters.size()==1){
+					 	cout<<"Answer: "<<current->yes->characters[0].name<<endl;
+					 	break;
+					 }
+					 else{
+					 
+				//	cout << "Characters matched: " << current->no->characters.size() << endl;
 					current = current->yes;
 				}
+			}
 				else if (answer == "no")
 				{
-					cout << "Characters matched: " << current->no->characters.size() << endl;
+					 if(current->no->characters.size()==1){
+					 	cout<<"Answer: "<<current->no->characters[0].name<<endl;
+					 	break;
+					 }
+					 else{
+					 
+				//	cout << "Characters matched: " << current->no->characters.size() << endl;
 					current = current->no;
 				}
+			}
 		
 				else if (answer == "other"){
-				
-					cout << "Characters matched: " << current->other->characters.size() << endl;
+				      
+				       if(current->other->characters.size()==1){
+					 	cout<<"Answer: "<<current->other->characters[0].name<<endl;
+					 	break;
+					 }
+					 else{
+					 	
+					 
+				//	cout << "Characters matched: " << current->other->characters.size() << endl;
 					current = current->other;
 				}
+			}
 					
 				else
 				{
@@ -790,16 +810,8 @@ int findCommonAnimeSize(vector<AnimeTraits>& characters) {
 					break;
 				}
 			}
-		}
 	}
+}
 	
-
-
-	
-
-  
-  
-  
-  
 		
 };

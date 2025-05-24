@@ -57,32 +57,17 @@ using namespace std;
  		cin>>manga[i];
  		
 	 }
- 	
- 	
- 	
- 	
- 	
+	 
  	  write.close();
  	
- 	
- 	
- 	
- 	
  }
-
-
-
-
-
-
 
 int main() {
 	
 	vector<AnimeTraits> animeList;
 	ReadCSV r;
     r.readData(animeList);
-    
-    
+
     BDT tree(animeList);
     tree.builtTree();
     while(true){
@@ -91,11 +76,6 @@ int main() {
     cout<<"Play again (yes/no): ";
     cin>>a;
     if(a=="no")break;
-    	
-	}
-    
- 
+}
 
-   
-   
 }
