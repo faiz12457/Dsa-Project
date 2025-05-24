@@ -9,9 +9,6 @@
 #include "tagFunctions.h"
 using namespace std;
 
-
-
-
 class BDT
 {
 	public:
@@ -37,7 +34,6 @@ class BDT
     destroyTree(node->yes);
     destroyTree(node->no);
     destroyTree(node->other);
-
     delete node;
      }
      
@@ -61,9 +57,9 @@ class BDT
 		}
 
 		root = new Node("Does your anime only contain tags? (yes/no)", characters);
-		root->yes = new Node("is your character is male (yes/no/other)", yesGroup);
+		root->yes = new Node("Is your character  male (yes/no/other)", yesGroup);
 	
-		root->no = new Node("is your character have all three manga and anime and tags (yes/no) ", noGroup);
+		root->no = new Node("Is your character have all three manga and anime and tags (yes/no) ", noGroup);
 
 		root->yes->yes = q.getGenderCharTag(root->yes, "Male");
 		root->yes->no = q.getGenderCharTag(root->yes, "Female");
@@ -83,8 +79,8 @@ class BDT
 			}
 		}
 
-		root->no->yes = new Node("is your character is male (yes/no/other)", existInBothYes);
-		root->no->no = new Node("is your character is male (yes/no/other)", existInBothNo);
+		root->no->yes = new Node("Is your character  male (yes/no/other)", existInBothYes);
+		root->no->no = new Node("Is your character  male (yes/no/other)", existInBothNo);
 
 		root->no->yes->yes = getGenderChar(root->no->yes, "Male");
 		root->no->yes->no = getGenderChar(root->no->yes, "Female");
@@ -229,7 +225,7 @@ pair<vector<AnimeTraits>,vector<AnimeTraits>> filterCharUsingColor(vector<AnimeT
 	    // TAG SIZE QUESTION NODE
 		Node * getTagSizeQuestion(vector<AnimeTraits>&characters){
 		int maxTags=findCommonTagSize(characters);
-		Node *node= new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)",characters);
+		Node *node= new Node("Does your character contain  " + to_string(maxTags) + " tags? (yes/no)",characters);
 	    auto[yesGroup,noGroup]=splitByMaxTags(maxTags,characters);
 	    
 	    node->yes= getVowelQuestion(yesGroup);
@@ -237,13 +233,13 @@ pair<vector<AnimeTraits>,vector<AnimeTraits>> filterCharUsingColor(vector<AnimeT
 	    
 	    maxTags=findCommonTagSize(noGroup);
 	    auto[yesGroup2,noGroup2]=splitByMaxTags(maxTags,noGroup);
-	    node->no= new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)", noGroup);
+	    node->no= new Node("Does your character contain  " + to_string(maxTags) + " tags? (yes/no)", noGroup);
 	    
 	      node->no->yes=getVowelQuestion(yesGroup2);
 	    
 	      maxTags=findCommonTagSize(noGroup2);
 	     auto[yesGroup3,noGroup3]=splitByMaxTags(maxTags,noGroup2);
-	    node->no->no=new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)",noGroup2);
+	    node->no->no=new Node("Does your character contain  " + to_string(maxTags) + " tags? (yes/no)",noGroup2);
 	  
 	    node->no->no->no=getVowelQuestion(noGroup3);
 	    
@@ -755,7 +751,6 @@ int findCommonAnimeSize(vector<AnimeTraits>& characters) {
 					 }
 					 else{
 					 
-				//	cout << "Characters matched: " << current->no->characters.size() << endl;
 					current = current->yes;
 				}
 			}
@@ -767,7 +762,7 @@ int findCommonAnimeSize(vector<AnimeTraits>& characters) {
 					 }
 					 else{
 					 
-				//	cout << "Characters matched: " << current->no->characters.size() << endl;
+			
 					current = current->no;
 				}
 			}
@@ -780,8 +775,7 @@ int findCommonAnimeSize(vector<AnimeTraits>& characters) {
 					 }
 					 else{
 					 	
-					 
-				//	cout << "Characters matched: " << current->other->characters.size() << endl;
+					
 					current = current->other;
 				}
 			}

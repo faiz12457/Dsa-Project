@@ -68,6 +68,7 @@ int main() {
 	ReadCSV r;
     r.readData(animeList);
 
+
     BDT tree(animeList);
     tree.builtTree();
     while(true){

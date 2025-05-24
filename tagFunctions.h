@@ -146,7 +146,7 @@ pair<vector<AnimeTraits>,vector<AnimeTraits>> filterCharUsingColor(vector<AnimeT
 	    // TAG SIZE QUESTION NODE
 		Node * getTagSizeQuestion(vector<AnimeTraits>&characters){
 		int maxTags=findCommonTagSize(characters);
-		Node *node= new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)",characters);
+		Node *node= new Node("Does your character contain  " + to_string(maxTags) + " tags? (yes/no)",characters);
 	    auto[yesGroup,noGroup]=splitByMaxTags(maxTags,characters);
 	    
 	    node->yes= getVowelQuestion(yesGroup);
@@ -154,13 +154,13 @@ pair<vector<AnimeTraits>,vector<AnimeTraits>> filterCharUsingColor(vector<AnimeT
 	    
 	    maxTags=findCommonTagSize(noGroup);
 	    auto[yesGroup2,noGroup2]=splitByMaxTags(maxTags,noGroup);
-	    node->no= new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)", noGroup);
+	    node->no= new Node("Does your character contain  " + to_string(maxTags) + " tags? (yes/no)", noGroup);
 	    
 	      node->no->yes=getVowelQuestion(yesGroup2);
 	    
 	      maxTags=findCommonTagSize(noGroup2);
 	     auto[yesGroup3,noGroup3]=splitByMaxTags(maxTags,noGroup2);
-	    node->no->no=new Node("Does your anime contain  " + to_string(maxTags) + " tags? (yes/no)",noGroup2);
+	    node->no->no=new Node("Does your character contain  " + to_string(maxTags) + " tags? (yes/no)",noGroup2);
 	  
 	    node->no->no->no=getVowelQuestion(noGroup3);
 	    
